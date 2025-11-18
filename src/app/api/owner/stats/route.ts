@@ -1,133 +1,145 @@
-import { NextResponse } from 'next/server';
-import { createClient as createServerClient } from '@/lib/supabase/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import prisma from '@/lib/prisma';
 
 /**
  * GET /api/owner/stats
- * Fetch comprehensive stats for owner dashboard
+ * Get comprehensive stats for Owner dashboard
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerClient();
+    const cookieStore = await cookies();
+    const supabase = await createClient();
 
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email! },
+    // Check if user is OWNER or MANAGER
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { role: true },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!dbUser || (dbUser.role !== 'OWNER' && dbUser.role !== 'MANAGER')) {
+      return NextResponse.json(
+        { error: 'Only owners and managers can view stats' },
+        { status: 403 }
+      );
     }
 
-    // Only owners can view these stats
-    if (user.role !== 'OWNER') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Get current date info
     const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
 
-    // Start of current month
-    const startOfCurrentMonth = new Date(currentYear, currentMonth, 1);
-    // Start of last month
-    const startOfLastMonth = new Date(lastMonthYear, lastMonth, 1);
-    // Start of current year
-    const startOfYear = new Date(currentYear, 0, 1);
+    // Revenue calculations
+    const currentMonthOrders = await prisma.order.findMany({
+      where: {
+        createdAt: { gte: currentMonthStart },
+        paymentStatus: 'PAID',
+      },
+      select: { totalAmount: true },
+    });
 
-    // 1. Revenue Stats
-    const [currentMonthOrders, lastMonthOrders, ytdOrders] = await Promise.all([
-      // Current month revenue
-      prisma.order.findMany({
-        where: {
-          paymentStatus: 'PAID',
-          createdAt: {
-            gte: startOfCurrentMonth,
-          },
-        },
-        select: {
-          totalAmount: true,
-        },
-      }),
-      // Last month revenue
-      prisma.order.findMany({
-        where: {
-          paymentStatus: 'PAID',
-          createdAt: {
-            gte: startOfLastMonth,
-            lt: startOfCurrentMonth,
-          },
-        },
-        select: {
-          totalAmount: true,
-        },
-      }),
-      // Year to date revenue
-      prisma.order.findMany({
-        where: {
-          paymentStatus: 'PAID',
-          createdAt: {
-            gte: startOfYear,
-          },
-        },
-        select: {
-          totalAmount: true,
-        },
-      }),
-    ]);
+    const lastMonthOrders = await prisma.order.findMany({
+      where: {
+        createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+        paymentStatus: 'PAID',
+      },
+      select: { totalAmount: true },
+    });
+
+    const ytdOrders = await prisma.order.findMany({
+      where: {
+        createdAt: { gte: yearStart },
+        paymentStatus: 'PAID',
+      },
+      select: { totalAmount: true },
+    });
 
     const currentMonthRevenue = currentMonthOrders.reduce(
       (sum, order) => sum + Number(order.totalAmount),
       0
     );
+
     const lastMonthRevenue = lastMonthOrders.reduce(
       (sum, order) => sum + Number(order.totalAmount),
       0
     );
+
     const ytdRevenue = ytdOrders.reduce(
       (sum, order) => sum + Number(order.totalAmount),
       0
     );
 
-    // Calculate revenue growth percentage
-    const revenueGrowth =
+    const growth =
       lastMonthRevenue > 0
         ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
         : 0;
 
-    // 2. Active Orders Count (Pending + Processing)
-    const activeOrdersCount = await prisma.order.count({
-      where: {
-        status: {
-          in: ['PENDING', 'PROCESSING'],
-        },
+    // Orders statistics
+    const allOrders = await prisma.order.findMany({
+      select: {
+        id: true,
+        status: true,
+        totalAmount: true,
+        createdAt: true,
       },
     });
 
-    // 3. Total Distributors
+    const currentMonthOrdersCount = allOrders.filter(
+      (o) => new Date(o.createdAt) >= currentMonthStart
+    ).length;
+
+    const lastMonthOrdersCount = allOrders.filter(
+      (o) =>
+        new Date(o.createdAt) >= lastMonthStart &&
+        new Date(o.createdAt) <= lastMonthEnd
+    ).length;
+
+    const ordersGrowth =
+      lastMonthOrdersCount > 0
+        ? ((currentMonthOrdersCount - lastMonthOrdersCount) /
+            lastMonthOrdersCount) *
+          100
+        : 0;
+
+    const activeOrders = allOrders.filter(
+      (o) => o.status === 'PENDING' || o.status === 'PROCESSING'
+    ).length;
+
+    const pendingOrders = allOrders.filter((o) => o.status === 'PENDING').length;
+
+    const fulfilledOrders = allOrders.filter(
+      (o) => o.status === 'FULFILLED'
+    ).length;
+
+    const completedOrders = fulfilledOrders;
+
+    const avgOrderValue =
+      allOrders.length > 0
+        ? allOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0) /
+          allOrders.length
+        : 0;
+
+    // Users statistics
     const totalDistributors = await prisma.distributor.count({
-      where: {
-        isActive: true,
-      },
+      where: { isActive: true },
     });
 
-    // 4. Total Clients
     const totalClients = await prisma.client.count({
-      where: {
-        isActive: true,
-      },
+      where: { isActive: true },
     });
 
-    // 5. Warehouse Inventory Value
+    // Inventory statistics
     const warehouseInventory = await prisma.warehouseInventory.findMany({
       include: {
         product: {
@@ -138,125 +150,57 @@ export async function GET() {
       },
     });
 
+    const totalProducts = await prisma.product.count({
+      where: { isActive: true },
+    });
+
     const inventoryValue = warehouseInventory.reduce(
       (sum, item) => sum + item.quantity * Number(item.product.unitPrice),
       0
     );
 
-    // 6. Total Products
-    const totalProducts = await prisma.product.count({
-      where: {
-        isActive: true,
-      },
-    });
+    const lowStockProducts = warehouseInventory.filter(
+      (item) => item.quantity <= item.reorderLevel
+    ).length;
 
-    // 7. Low Stock Products
-    const lowStockProducts = await prisma.warehouseInventory.count({
-      where: {
-        quantity: {
-          lte: prisma.warehouseInventory.fields.reorderPoint,
-        },
-      },
-    });
-
-    // 8. Orders Statistics
-    const [totalOrders, pendingOrders, fulfilledOrders, completedOrders] =
-      await Promise.all([
-        prisma.order.count(),
-        prisma.order.count({
-          where: { status: 'PENDING' },
-        }),
-        prisma.order.count({
-          where: { status: 'FULFILLED' },
-        }),
-        prisma.order.count({
-          where: { status: { in: ['RECEIVED', 'DELIVERED'] } },
-        }),
-      ]);
-
-    // 9. Recent Activity (last 10 orders)
+    // Recent activity
     const recentOrders = await prisma.order.findMany({
-      take: 10,
-      orderBy: {
-        createdAt: 'desc',
-      },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
       include: {
         distributor: {
-          select: {
-            businessName: true,
-          },
+          select: { businessName: true },
         },
         client: {
-          select: {
-            user: {
-              select: {
-                fullName: true,
-              },
-            },
-          },
+          select: { businessName: true },
         },
       },
     });
 
-    const recentActivity = recentOrders.map((order) => {
-      const customerName =
+    const recentActivity = recentOrders.map((order) => ({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      orderType: order.orderType,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      totalAmount: Number(order.totalAmount),
+      customerName:
         order.orderType === 'WAREHOUSE_TO_DISTRIBUTOR'
-          ? order.distributor?.businessName
-          : order.client?.user.fullName;
-
-      return {
-        id: order.id,
-        orderNumber: order.orderNumber,
-        orderType: order.orderType,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        totalAmount: Number(order.totalAmount),
-        customerName: customerName || 'Unknown',
-        createdAt: order.createdAt,
-      };
-    });
-
-    // 10. Monthly comparison stats
-    const currentMonthOrdersCount = await prisma.order.count({
-      where: {
-        createdAt: {
-          gte: startOfCurrentMonth,
-        },
-      },
-    });
-
-    const lastMonthOrdersCount = await prisma.order.count({
-      where: {
-        createdAt: {
-          gte: startOfLastMonth,
-          lt: startOfCurrentMonth,
-        },
-      },
-    });
-
-    const ordersGrowth =
-      lastMonthOrdersCount > 0
-        ? ((currentMonthOrdersCount - lastMonthOrdersCount) /
-            lastMonthOrdersCount) *
-          100
-        : 0;
-
-    // 11. Average Order Value
-    const avgOrderValue =
-      totalOrders > 0
-        ? ytdRevenue / ytdOrders.length
-        : 0;
+          ? order.distributor?.businessName || 'Unknown'
+          : order.client?.businessName || 'Unknown',
+      createdAt: order.createdAt.toISOString(),
+    }));
 
     return NextResponse.json({
       revenue: {
         currentMonth: currentMonthRevenue,
         lastMonth: lastMonthRevenue,
         yearToDate: ytdRevenue,
-        growth: revenueGrowth,
+        growth,
       },
       orders: {
-        active: activeOrdersCount,
-        total: totalOrders,
+        active: activeOrders,
+        total: allOrders.length,
         pending: pendingOrders,
         fulfilled: fulfilledOrders,
         completed: completedOrders,
@@ -279,7 +223,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching owner stats:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch owner stats' },
       { status: 500 }
     );
   }
