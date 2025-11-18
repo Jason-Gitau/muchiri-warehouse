@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import { Warehouse, Mail, ArrowRight, CheckCircle2, AlertCircle, Package, TrendingUp, Shield } from 'lucide-react';
+import { Warehouse, Mail, ArrowRight, AlertCircle, Package, TrendingUp, Shield, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -16,22 +17,22 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setMessage('');
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        password,
       });
 
       if (error) throw error;
 
-      setMessage('Check your email for the magic link!');
-      setEmail('');
+      if (data.user) {
+        // Successful login - redirect to dashboard
+        router.push('/dashboard');
+        router.refresh();
+      }
     } catch (error: any) {
-      setError(error.message || 'An error occurred');
+      setError(error.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
@@ -137,6 +138,7 @@ export default function LoginPage() {
           {/* Login Form */}
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
             <form onSubmit={handleLogin} className="space-y-6">
+              {/* Email Field */}
               <div>
                 <label
                   htmlFor="email"
@@ -160,13 +162,52 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {message && (
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start space-x-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-green-800 text-sm font-medium">{message}</p>
+              {/* Password Field */}
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-semibold text-slate-700 mb-2"
+                >
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="Enter your password"
+                    className="w-full pl-12 pr-12 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-slate-400 hover:text-slate-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-slate-400 hover:text-slate-600" />
+                    )}
+                  </button>
                 </div>
-              )}
+              </div>
 
+              {/* Forgot Password Link */}
+              <div className="flex items-center justify-end">
+                <a
+                  href="/auth/forgot-password"
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  Forgot password?
+                </a>
+              </div>
+
+              {/* Error Message */}
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start space-x-3 animate-in fade-in slide-in-from-top-2 duration-300">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -174,6 +215,7 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
@@ -185,11 +227,11 @@ export default function LoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Sending magic link...</span>
+                    <span>Signing in...</span>
                   </>
                 ) : (
                   <>
-                    <span>Continue with Email</span>
+                    <span>Sign In</span>
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
@@ -200,7 +242,7 @@ export default function LoginPage() {
               <div className="flex items-start space-x-2 text-slate-600">
                 <Shield className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-400" />
                 <p className="text-xs leading-relaxed">
-                  We'll send you a secure magic link. No password needed—just click the link in your email to sign in.
+                  Your credentials are encrypted and protected with enterprise-grade security.
                 </p>
               </div>
             </div>

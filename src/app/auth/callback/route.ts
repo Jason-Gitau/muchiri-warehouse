@@ -36,28 +36,23 @@ export async function GET(request: NextRequest) {
               );
             }
 
-            // Redirect based on role from invitation
-            if (result.user?.role === 'MANAGER') {
-              return NextResponse.redirect(new URL('/dashboard', request.url));
-            } else if (result.user?.role === 'DISTRIBUTOR') {
-              return NextResponse.redirect(new URL('/dashboard', request.url));
-            } else if (result.user?.role === 'OWNER') {
-              return NextResponse.redirect(new URL('/dashboard', request.url));
-            } else if (result.user?.role === 'CLIENT') {
-              return NextResponse.redirect(new URL('/dashboard', request.url));
-            }
-
-            // Fallback redirect to dashboard
-            return NextResponse.redirect(new URL('/dashboard', request.url));
+            // New user created via invitation - redirect to complete profile
+            // Profile will be incomplete since we only set email and role during invitation acceptance
+            return NextResponse.redirect(new URL('/onboarding/complete-profile', request.url));
           }
 
           // No invitation token - check if user exists in database
           const user = await prisma.user.findUnique({
-            where: { id: data.session.user.id },
+            where: { email: data.session.user.email! },
           });
 
           if (user) {
-            // Redirect based on role
+            // Check if profile is complete
+            if (!user.profileComplete) {
+              return NextResponse.redirect(new URL('/onboarding/complete-profile', request.url));
+            }
+
+            // Profile complete - redirect to dashboard
             return NextResponse.redirect(new URL('/dashboard', request.url));
           }
 
