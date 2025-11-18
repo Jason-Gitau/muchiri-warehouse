@@ -34,14 +34,28 @@ export default function ProductsPage() {
         .eq('id', user.id)
         .single();
 
-      setUserRole(userData?.role);
+      const role = userData?.role;
+      setUserRole(role);
 
-      // Fetch products
-      const { data: productsData } = await supabase
-        .from('Product')
-        .select('*');
+      // Clients see products from their distributor's inventory
+      if (role === 'CLIENT') {
+        const response = await fetch('/api/products/available');
+        const data = await response.json();
 
-      setProducts(productsData || []);
+        if (response.ok) {
+          setProducts(data.products || []);
+        } else {
+          console.error('Error fetching available products:', data.error);
+          setProducts([]);
+        }
+      } else {
+        // Managers, Distributors, Owners see all products
+        const { data: productsData } = await supabase
+          .from('Product')
+          .select('*');
+
+        setProducts(productsData || []);
+      }
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -83,12 +97,19 @@ export default function ProductsPage() {
                 <h3 className="text-lg font-semibold text-gray-900">
                   {product.name}
                 </h3>
-                <p className="text-sm text-gray-600 mt-2">{product.description}</p>
+                <p className="text-sm text-gray-600 mt-2">
+                  {product.flavor} • {product.category}
+                </p>
+                {userRole === 'CLIENT' && product.availableQuantity !== undefined && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Available: {product.availableQuantity} units
+                  </p>
+                )}
                 <div className="mt-4 flex justify-between items-center">
                   <span className="text-2xl font-bold text-gray-900">
-                    KSh {product.price}
+                    KSh {product.unitPrice || product.price}
                   </span>
-                  {userRole !== 'MANAGER' && (
+                  {(userRole === 'DISTRIBUTOR' || userRole === 'CLIENT') && (
                     <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
                       Add to Cart
                     </button>

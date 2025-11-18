@@ -356,7 +356,7 @@ export default function Dashboard() {
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <a
               href="/products"
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition text-center"
@@ -374,7 +374,7 @@ export default function Dashboard() {
               <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
               <h3 className="font-semibold">My Orders</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Track your order status
+                Track your warehouse orders
               </p>
             </a>
             <a
@@ -385,6 +385,16 @@ export default function Dashboard() {
               <h3 className="font-semibold">My Inventory</h3>
               <p className="text-sm text-gray-600 mt-1">
                 View your current stock
+              </p>
+            </a>
+            <a
+              href="/client-orders"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition text-center"
+            >
+              <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+              <h3 className="font-semibold">Client Orders</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Manage orders from clients
               </p>
             </a>
           </div>
