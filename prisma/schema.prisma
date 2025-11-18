@@ -259,3 +259,24 @@ model ClientPayment {
   @@index([clientId])
   @@index([distributorId])
 }
+
+model Invitation {
+  id            String   @id @default(uuid())
+  email         String
+  role          UserRole
+  token         String   @unique
+  createdBy     String
+  expiresAt     DateTime
+  accepted      Boolean  @default(false)
+  acceptedAt    DateTime?
+  acceptedByUserId String?
+  metadata      Json?    // Stores business name, phone, location, etc
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([email])
+  @@index([token])
+  @@index([role])
+  @@index([accepted])
+  @@index([expiresAt])
+}

@@ -32,8 +32,8 @@ export async function middleware(request: NextRequest) {
 
   // If user is not authenticated, redirect to login
   if (!user) {
-    // Allow login and signup pages without authentication
-    if (pathname === '/login' || pathname === '/signup' || pathname === '/') {
+    // Allow public pages without authentication
+    if (pathname === '/login' || pathname === '/signup' || pathname === '/' || pathname.startsWith('/setup/owner')) {
       return supabaseResponse;
     }
     return NextResponse.redirect(new URL('/login', request.url));
