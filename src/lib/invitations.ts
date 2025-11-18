@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { sendInvitationEmail } from '@/lib/email/resend';
 
 // Generate unique invitation token
 export function generateInvitationToken(): string {
@@ -63,10 +64,73 @@ export async function createAndSendInvitation(
       },
     });
 
-    // Send invitation email
+    // Create Supabase auth user with temporary password
+    // This allows them to later set their own password
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Generate temporary password
+    const tempPassword = crypto.randomBytes(32).toString('hex');
+
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true, // Auto-confirm email
+    });
+
+    if (authError) {
+      console.error('Error creating Supabase user:', authError);
+      // Delete the invitation if user creation failed
+      await prisma.invitation.delete({ where: { id: invitation.id } });
+      return {
+        success: false,
+        error: 'Failed to create user account',
+      };
+    }
+
+    // Send magic link for automatic login
     const invitationLink = `${invitationUrl}?token=${token}`;
 
-    // TODO: Send email via Resend/SendGrid
+    const { data: magicLinkData, error: magicLinkError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+      options: {
+        redirectTo: invitationLink,
+      },
+    });
+
+    if (magicLinkError) {
+      console.error('Error generating magic link:', magicLinkError);
+    }
+
+    // Get inviter name for email
+    const inviter = await prisma.user.findUnique({
+      where: { id: createdBy },
+      select: { fullName: true, email: true },
+    });
+
+    const inviterName = inviter?.fullName || inviter?.email || 'Your administrator';
+
+    // Use magic link URL if available, otherwise use the invitation link
+    const emailLink = magicLinkData?.properties?.action_link || invitationLink;
+
+    // Send invitation email via Resend
+    const emailResult = await sendInvitationEmail({
+      to: email,
+      inviterName,
+      role,
+      invitationLink: emailLink,
+      companyName: 'Muchiri Warehouse',
+    });
+
+    if (!emailResult.success) {
+      console.error('Failed to send invitation email:', emailResult.error);
+      // Don't fail the invitation creation if email fails
+      // Just log it for debugging
+    }
+
+    console.log(`Invitation created successfully for ${email}`);
     console.log(`Invitation link: ${invitationLink}`);
 
     return {
@@ -162,17 +226,16 @@ export async function acceptInvitation(
       },
     });
 
-    // Create user record
-    const fullName = (invitation.metadata as any)?.businessName || supabaseUser.email;
-    const phoneNumber = (invitation.metadata as any)?.phoneNumber;
-
+    // Create user record with incomplete profile
+    // User will complete their profile (name, phone, password) after clicking the magic link
     const user = await prisma.user.create({
       data: {
         id: userId,
         email: invitation.email,
-        fullName,
-        phoneNumber,
+        fullName: null, // Will be filled in profile completion
+        phoneNumber: null, // Will be filled in profile completion
         role: invitation.role,
+        profileComplete: false,
       },
     });
 
@@ -184,7 +247,7 @@ export async function acceptInvitation(
       await prisma.distributor.create({
         data: {
           userId: user.id,
-          businessName: businessName || user.fullName,
+          businessName: businessName || 'Pending',
           phoneNumber: phone || '',
         },
       });
@@ -208,7 +271,7 @@ export async function acceptInvitation(
         data: {
           userId: user.id,
           distributorId,
-          businessName: businessName || user.fullName,
+          businessName: businessName || 'Pending',
           phoneNumber: phone || '',
           location: location || '',
         },
