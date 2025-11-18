@@ -275,7 +275,7 @@ export default function Dashboard() {
               </p>
             </a>
             <a
-              href="/orders"
+              href="/warehouse-orders"
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition text-center"
             >
               <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
@@ -368,13 +368,13 @@ export default function Dashboard() {
               </p>
             </a>
             <a
-              href="/orders"
+              href="/distributor-orders"
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition text-center"
             >
               <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
-              <h3 className="font-semibold">My Orders</h3>
+              <h3 className="font-semibold">Warehouse Orders</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Track your warehouse orders
+                Track orders from warehouse
               </p>
             </a>
             <a
