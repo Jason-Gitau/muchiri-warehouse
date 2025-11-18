@@ -1,15 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { RestockSchema } from '@/types';
 
 // POST /api/inventory/restock - Add quantity to existing inventory
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Add auth check - verify user has MANAGER role
-    // const session = await getServerSession();
-    // if (!session || session.user.role !== 'MANAGER') {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    // }
+    const supabase = createServerClient();
+
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email! },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Only managers and owners can restock
+    if (user.role !== 'MANAGER' && user.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const body = await request.json();
 
@@ -52,9 +69,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get actual user ID from session
-    // For now using a placeholder
-    const performedByUserId = warehouse.ownerId;
+    // Use actual user ID from session
+    const performedByUserId = user.id;
 
     // Use transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
