@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/inventory - List all warehouse inventory with product details
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Add auth check - verify user has MANAGER role
-    // const session = await getServerSession();
-    // if (!session || session.user.role !== 'MANAGER') {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    // }
+    const supabase = createServerClient();
+
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email! },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Only managers, owners, and distributors can view inventory
+    if (user.role !== 'MANAGER' && user.role !== 'OWNER' && user.role !== 'DISTRIBUTOR') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const lowStockOnly = searchParams.get('lowStockOnly') === 'true';

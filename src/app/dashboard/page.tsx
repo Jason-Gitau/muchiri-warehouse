@@ -393,7 +393,175 @@ export default function Dashboard() {
     );
   }
 
-  // Default view for other roles
+  // Client Dashboard
+  if (userRole === 'CLIENT') {
+    const clientCards = [
+      {
+        title: 'Pending Orders',
+        value: stats.pendingOrders,
+        icon: ShoppingCart,
+        color: 'bg-yellow-500',
+      },
+      {
+        title: 'Completed Orders',
+        value: stats.completedOrders,
+        icon: Package,
+        color: 'bg-green-500',
+      },
+    ];
+
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Client Dashboard</h1>
+          <p className="text-gray-600 mt-2">
+            Welcome back! View your orders and browse products.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {clientCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={card.title}
+                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">{card.title}</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {card.value}
+                    </p>
+                  </div>
+                  <div className={`${card.color} p-3 rounded-lg`}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a
+              href="/products"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition text-center"
+            >
+              <Package className="w-8 h-8 mx-auto mb-2 text-green-600" />
+              <h3 className="font-semibold">Browse Products</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                View available products
+              </p>
+            </a>
+            <a
+              href="/orders"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-center"
+            >
+              <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+              <h3 className="font-semibold">My Orders</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Track your order status
+              </p>
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Owner Dashboard
+  if (userRole === 'OWNER') {
+    const ownerCards = [
+      {
+        title: 'Pending Orders',
+        value: stats.pendingOrders,
+        icon: ShoppingCart,
+        color: 'bg-yellow-500',
+      },
+      {
+        title: 'Completed Orders',
+        value: stats.completedOrders,
+        icon: Package,
+        color: 'bg-green-500',
+      },
+    ];
+
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Owner Dashboard</h1>
+          <p className="text-gray-600 mt-2">
+            Welcome back! Here is your warehouse overview.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {ownerCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={card.title}
+                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">{card.title}</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {card.value}
+                    </p>
+                  </div>
+                  <div className={`${card.color} p-3 rounded-lg`}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a
+              href="/analytics"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition text-center"
+            >
+              <TrendingUp className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+              <h3 className="font-semibold">Analytics</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                View revenue and performance
+              </p>
+            </a>
+            <a
+              href="/orders"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-center"
+            >
+              <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+              <h3 className="font-semibold">Orders</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Monitor all orders
+              </p>
+            </a>
+            <a
+              href="/inventory"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition text-center"
+            >
+              <Warehouse className="w-8 h-8 mx-auto mb-2 text-green-600" />
+              <h3 className="font-semibold">Inventory</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                View warehouse stock
+              </p>
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default view for unknown roles
   return (
     <div>
       <div className="mb-8">

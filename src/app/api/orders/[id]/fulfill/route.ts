@@ -90,9 +90,8 @@ export async function POST(
       );
     }
 
-    // TODO: Get actual user ID from session
-    // For now using a placeholder
-    const performedByUserId = order.placedByUserId;
+    // Use actual user ID from session
+    const performedByUserId = user.id;
 
     // Fulfill order in a transaction
     const result = await prisma.$transaction(async (tx) => {
