@@ -10,17 +10,51 @@ export default function DistributorDashboard() {
     completedOrders: 0,
     totalSpent: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Fetch real stats from API
-    // For now, using placeholder data
-    setStats({
-      myInventory: 0,
-      pendingOrders: 0,
-      completedOrders: 0,
-      totalSpent: 0,
-    });
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch inventory count
+      const inventoryResponse = await fetch('/api/distributors/inventory');
+      const inventoryData = await inventoryResponse.json();
+      const inventoryCount = inventoryData.inventory?.length || 0;
+
+      // Fetch orders
+      const ordersResponse = await fetch('/api/orders?type=distributor');
+      const ordersData = await ordersResponse.json();
+      const orders = ordersData.orders || [];
+
+      // Calculate stats
+      const pendingOrders = orders.filter(
+        (o: any) => o.status === 'PENDING' || o.status === 'PROCESSING'
+      ).length;
+
+      const completedOrders = orders.filter(
+        (o: any) => o.status === 'FULFILLED'
+      ).length;
+
+      const totalSpent = orders
+        .filter((o: any) => o.paymentStatus === 'PAID')
+        .reduce((sum: number, o: any) => sum + Number(o.totalAmount), 0);
+
+      setStats({
+        myInventory: inventoryCount,
+        pendingOrders,
+        completedOrders,
+        totalSpent,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const cards = [
     {
@@ -48,6 +82,17 @@ export default function DistributorDashboard() {
       color: 'bg-purple-500',
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
