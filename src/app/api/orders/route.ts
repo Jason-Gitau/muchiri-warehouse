@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { CreateOrderSchema } from '@/types';
 
@@ -105,6 +106,31 @@ export async function GET(request: NextRequest) {
 // POST /api/orders - Create new order
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createServerClient();
+
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email! },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Only distributors can create warehouse orders
+    if (user.role !== 'DISTRIBUTOR') {
+      return NextResponse.json(
+        { error: 'Only distributors can create warehouse orders' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate request body
