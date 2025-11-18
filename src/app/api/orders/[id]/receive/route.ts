@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -30,7 +30,7 @@ export async function POST(
       );
     }
 
-    const orderId = params.id;
+    const { id: orderId } = await params;
 
     // Get order with items
     const order = await prisma.order.findUnique({

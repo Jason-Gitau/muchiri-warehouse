@@ -38,6 +38,18 @@ model Warehouse {
   @@index([ownerId])
 }
 
+model WarehouseManager {
+  id          String   @id @default(uuid())
+  warehouseId String
+  managerId   String
+  assignedAt  DateTime @default(now())
+  isActive    Boolean  @default(true)
+
+  @@unique([warehouseId, managerId])
+  @@index([warehouseId])
+  @@index([managerId])
+}
+
 model Product {
   id                     String                   @id @default(uuid())
   name                   String
@@ -98,6 +110,35 @@ model Distributor {
   @@index([isActive])
 }
 
+model WarehouseDistributor {
+  id              String    @id @default(uuid())
+  warehouseId     String
+  distributorId   String
+  addedByManagerId String
+  addedAt         DateTime  @default(now())
+  removedAt       DateTime?
+  isActive        Boolean   @default(true)
+
+  @@unique([warehouseId, distributorId])
+  @@index([warehouseId])
+  @@index([distributorId])
+}
+
+model Client {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  distributorId String
+  businessName  String?
+  phoneNumber   String
+  location      String
+  addedAt       DateTime @default(now())
+  isActive      Boolean  @default(true)
+
+  @@index([userId])
+  @@index([distributorId])
+  @@index([isActive])
+}
+
 model Order {
   id                 String        @id @default(uuid())
   orderNumber        String        @unique
@@ -119,6 +160,7 @@ model Order {
   @@index([orderNumber])
   @@index([warehouseId])
   @@index([distributorId])
+  @@index([clientId])
   @@index([status])
   @@index([paymentStatus])
   @@index([createdAt])
@@ -184,4 +226,36 @@ enum TransactionType {
   ORDER_FULFILLED
   ORDER_RECEIVED
   ADJUSTMENT
+}
+
+model Payment {
+  id                  String        @id @default(uuid())
+  orderId             String        @unique
+  amount              Decimal       @db.Decimal(10, 2)
+  paymentMethod       String
+  mpesaPhoneNumber    String?
+  mpesaTransactionId  String?
+  mpesaReceiptNumber  String?
+  status              PaymentStatus
+  paidAt              DateTime?
+  createdAt           DateTime      @default(now())
+
+  @@index([orderId])
+  @@index([status])
+  @@index([mpesaTransactionId])
+}
+
+model ClientPayment {
+  id                 String   @id @default(uuid())
+  orderId            String
+  clientId           String
+  distributorId      String
+  amount             Decimal  @db.Decimal(10, 2)
+  markedPaidByUserId String
+  paymentNotes       String?
+  markedPaidAt       DateTime @default(now())
+
+  @@index([orderId])
+  @@index([clientId])
+  @@index([distributorId])
 }

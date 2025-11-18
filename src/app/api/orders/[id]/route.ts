@@ -5,10 +5,10 @@ import { UpdateOrderSchema } from '@/types';
 // GET /api/orders/[id] - Get single order with all details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const order = await prisma.order.findUnique({
       where: { id },
@@ -69,10 +69,10 @@ export async function GET(
 // PATCH /api/orders/[id] - Update order status or add notes
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     // Validate request body

@@ -13,7 +13,7 @@ const updateProductSchema = z.object({
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createClient();
@@ -25,8 +25,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const product = await prisma.product.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!product) {
@@ -35,7 +37,7 @@ export async function GET(
 
     // Get warehouse inventory for this product
     const warehouseInventory = await prisma.warehouseInventory.findMany({
-      where: { productId: params.id },
+      where: { productId: id },
     });
 
     return NextResponse.json({
@@ -54,7 +56,7 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createClient();
@@ -74,11 +76,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { id } = await params;
+
     const body = await request.json();
     const validated = updateProductSchema.parse(body);
 
     const product = await prisma.product.update({
-      where: { id: params.id },
+      where: { id },
       data: validated,
     });
 
@@ -96,7 +100,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createClient();
@@ -116,9 +120,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { id } = await params;
+
     // Soft delete
     const product = await prisma.product.update({
-      where: { id: params.id },
+      where: { id },
       data: { isActive: false },
     });
 

@@ -20,11 +20,7 @@ export default async function Home() {
 
   // Redirect based on role
   if (user) {
-    if (user.role === 'MANAGER' || user.role === 'OWNER') {
-      redirect('/manager/dashboard');
-    } else if (user.role === 'DISTRIBUTOR') {
-      redirect('/distributor/dashboard');
-    }
+    redirect('/dashboard');
   }
 
   // Default redirect to login

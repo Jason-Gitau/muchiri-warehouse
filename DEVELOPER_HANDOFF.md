@@ -135,11 +135,9 @@ Follow these steps:
 6. Create `.env.local`:
 ```bash
 # Copy this template and fill in your values:
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-DATABASE_URL=postgresql://postgres:[YOUR_PASSWORD]@db.xxxxx.supabase.co:5432/postgres
-DIRECT_URL=postgresql://postgres:[YOUR_PASSWORD]@db.xxxxx.supabase.co:5432/postgres
+NEXT_PUBLIC_SUPABASE_URL=https://ktzqtjzxswgvsygaxlgx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0enF0anp4c3dndnN5Z2F4bGd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NTExMDksImV4cCI6MjA3OTAyNzEwOX0.EZfpjAQkDxCTw2Dlspmx9BQ2OL_PsJSz8HVow-bgI6Q
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0enF0anp4c3dndnN5Z2F4bGd4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzQ1MTEwOSwiZXhwIjoyMDc5MDI3MTA5fQ.5TlhZe2WFdyG5u0I-sncwfRS5CzWHeOd9mXG6rywJJA
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
