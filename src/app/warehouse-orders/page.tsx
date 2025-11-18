@@ -10,6 +10,8 @@ import {
   User,
   XCircle,
   Eye,
+  Search,
+  Filter,
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -44,14 +46,28 @@ interface WarehouseOrder {
   }>;
 }
 
+interface Distributor {
+  id: string;
+  businessName: string;
+}
+
 export default function WarehouseOrdersPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [orders, setOrders] = useState<WarehouseOrder[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<WarehouseOrder[]>([]);
+  const [distributors, setDistributors] = useState<Distributor[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'fulfilled'>('all');
   const [processing, setProcessing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<WarehouseOrder | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  // Enhanced filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
+  const [distributorFilter, setDistributorFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     checkUserRole();
@@ -60,8 +76,13 @@ export default function WarehouseOrdersPage() {
   useEffect(() => {
     if (userRole) {
       fetchWarehouseOrders();
+      fetchDistributors();
     }
   }, [userRole, filter]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [orders, searchTerm, paymentStatusFilter, distributorFilter, startDate, endDate]);
 
   const checkUserRole = async () => {
     try {
@@ -138,6 +159,65 @@ export default function WarehouseOrdersPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchDistributors = async () => {
+    try {
+      const { data } = await supabase
+        .from('Distributor')
+        .select('id, businessName')
+        .eq('isActive', true);
+
+      setDistributors(data || []);
+    } catch (error) {
+      console.error('Error fetching distributors:', error);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...orders];
+
+    // Search filter (order number, distributor name)
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (order) =>
+          order.orderNumber.toLowerCase().includes(searchLower) ||
+          order.distributor?.businessName.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Payment status filter
+    if (paymentStatusFilter !== 'all') {
+      filtered = filtered.filter(
+        (order) => order.paymentStatus === paymentStatusFilter
+      );
+    }
+
+    // Distributor filter
+    if (distributorFilter !== 'all') {
+      filtered = filtered.filter(
+        (order) => order.distributorId === distributorFilter
+      );
+    }
+
+    // Date range filters
+    if (startDate) {
+      const start = new Date(startDate);
+      filtered = filtered.filter(
+        (order) => new Date(order.createdAt) >= start
+      );
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // Include entire end date
+      filtered = filtered.filter(
+        (order) => new Date(order.createdAt) <= end
+      );
+    }
+
+    setFilteredOrders(filtered);
   };
 
   const handleFulfillOrder = async (orderId: string) => {
@@ -261,7 +341,7 @@ export default function WarehouseOrdersPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Orders</p>
-              <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
+              <p className="text-3xl font-bold text-gray-900">{filteredOrders.length}</p>
             </div>
             <div className="bg-blue-500 p-3 rounded-lg">
               <ShoppingCart className="w-6 h-6 text-white" />
@@ -274,7 +354,7 @@ export default function WarehouseOrdersPage() {
               <p className="text-sm text-gray-600 mb-1">Pending</p>
               <p className="text-3xl font-bold text-gray-900">
                 {
-                  orders.filter(
+                  filteredOrders.filter(
                     (o) => o.status === 'PENDING' || o.status === 'PROCESSING'
                   ).length
                 }
@@ -290,7 +370,7 @@ export default function WarehouseOrdersPage() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Unpaid</p>
               <p className="text-3xl font-bold text-gray-900">
-                {orders.filter((o) => o.paymentStatus === 'UNPAID').length}
+                {filteredOrders.filter((o) => o.paymentStatus === 'UNPAID').length}
               </p>
             </div>
             <div className="bg-red-500 p-3 rounded-lg">
@@ -303,13 +383,79 @@ export default function WarehouseOrdersPage() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Fulfilled</p>
               <p className="text-3xl font-bold text-gray-900">
-                {orders.filter((o) => o.status === 'FULFILLED').length}
+                {filteredOrders.filter((o) => o.status === 'FULFILLED').length}
               </p>
             </div>
             <div className="bg-green-500 p-3 rounded-lg">
               <Package className="w-6 h-6 text-white" />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Enhanced Filters */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="h-5 w-5 text-gray-600" />
+          <h3 className="font-semibold text-gray-900">Filters</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search order number..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Payment Status */}
+          <select
+            value={paymentStatusFilter}
+            onChange={(e) => setPaymentStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">All Payment Status</option>
+            <option value="PAID">Paid</option>
+            <option value="UNPAID">Unpaid</option>
+            <option value="PENDING">Pending</option>
+          </select>
+
+          {/* Distributor */}
+          <select
+            value={distributorFilter}
+            onChange={(e) => setDistributorFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">All Distributors</option>
+            {distributors.map((dist) => (
+              <option key={dist.id} value={dist.id}>
+                {dist.businessName}
+              </option>
+            ))}
+          </select>
+
+          {/* Start Date */}
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Start date"
+          />
+
+          {/* End Date */}
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="End date"
+          />
         </div>
       </div>
 
@@ -353,12 +499,16 @@ export default function WarehouseOrdersPage() {
 
       {/* Orders List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        {orders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
             <ShoppingCart className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-500 text-lg mb-2">No warehouse orders yet</p>
+            <p className="text-gray-500 text-lg mb-2">
+              {orders.length === 0 ? 'No warehouse orders yet' : 'No orders match your filters'}
+            </p>
             <p className="text-gray-400">
-              Orders from distributors will appear here
+              {orders.length === 0
+                ? 'Orders from distributors will appear here'
+                : 'Try adjusting your search or filter criteria'}
             </p>
           </div>
         ) : (
@@ -390,7 +540,7 @@ export default function WarehouseOrdersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
