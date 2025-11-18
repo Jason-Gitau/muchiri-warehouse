@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 
@@ -12,7 +12,7 @@ const completeProfileSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseClient();
+    const supabase = createClient();
 
     // Check authentication
     const {

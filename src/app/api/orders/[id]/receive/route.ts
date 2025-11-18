@@ -36,7 +36,7 @@ export async function POST(
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        orderItem: true,
+        orderItems: true,
       },
     });
 
@@ -63,7 +63,7 @@ export async function POST(
     // Use Prisma transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
       // Process each order item
-      for (const item of order.orderItem) {
+      for (const item of order.orderItems) {
         // Check if distributor already has this product in inventory
         const existingInventory = await tx.distributorInventory.findUnique({
           where: {
